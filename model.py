@@ -1,7 +1,8 @@
 import jittor as jt
 import numpy as np
+import random
 from math import sqrt
-jt.flags.use_cuda = True
+#jt.flags.use_cuda = True
 
 class EqualLR:
     def __init__(self, name):
@@ -57,9 +58,8 @@ class EqualLinear(jt.Module):
         return self.linear(input)
     
 class BlurFunctionBackward(jt.Function):
-    @staticmethod
-    def forward(self, grad_output, kernel, kernel_flip):
-        self.save_for_backward(kernel, kernel_flip)
+    def execute(self, grad_output, kernel, kernel_flip):
+        self.saved_tensors = kernel, kernel_flip
 
         grad_input = jt.nn.conv2d(
             grad_output, kernel_flip, padding=1, groups=grad_output.shape[1]
@@ -67,8 +67,7 @@ class BlurFunctionBackward(jt.Function):
 
         return grad_input
 
-    @staticmethod
-    def backward(self, gradgrad_output):
+    def grad(self, gradgrad_output):
         kernel, kernel_flip = self.saved_tensors
 
         grad_input = jt.nn.conv2d(
@@ -77,39 +76,35 @@ class BlurFunctionBackward(jt.Function):
 
         return grad_input, None, None
 
-
-class BlurFunction(Function):
-    @staticmethod
-    def forward(self, input, kernel, kernel_flip):
-        self.save_for_backward(kernel, kernel_flip)
+class BlurFunction(jt.Function):
+    def execute(self, input, kernel, kernel_flip):
+        self.saved_tensors = kernel, kernel_flip
 
         output = jt.nn.conv2d(input, kernel, padding=1, groups=input.shape[1])
 
         return output
 
-    @staticmethod
-    def backward(self, grad_output):
+    def grad(self, grad_output):
         kernel, kernel_flip = self.saved_tensors
 
-        grad_input = BlurFunctionBackward.apply(grad_output, kernel, kernel_flip)
+        grad_input = BlurFunctionBackward().execute(grad_output, kernel, kernel_flip)
 
         return grad_input, None, None
 
+blur = BlurFunction().apply
 
-blur = BlurFunction.apply
-
-class Blur(jt.nn.Module):
+class Blur(jt.Module):
     def __init__(self, channel):
-        weight = torch.tensor([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=torch.float32)
-        weight = weight.view(1, 1, 3, 3)
+        weight = jt.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype='float32')
+        weight = weight.reshape(1, 1, 3, 3)
         weight = weight / weight.sum()
         weight_flip = jt.flip(weight, [2, 3])
 
-        self.register_buffer('weight', weight.repeat(channel, 1, 1, 1))
-        self.register_buffer('weight_flip', weight_flip.repeat(channel, 1, 1, 1))
+        self._weight = weight.repeat(channel, 1, 1, 1)
+        self._weight_flip = weight_flip.repeat(channel, 1, 1, 1)
 
     def execute(self, input):
-        return blur(input, self.weight, self.weight_flip)
+        return blur(input, self._weight, self._weight_flip)
         # return jt.nn.conv2d(input, self.weight, padding=1, groups=input.shape[1])
         
 class FusedDownsample(jt.Module):
