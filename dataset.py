@@ -16,7 +16,7 @@ class SymbolDataset(Dataset):
             image = plt.imread(image_path)
             train_image.append(image)
                 
-            setattr(self, 'train_image_' + str(resolution), train_image.copy())
+            setattr(self, 'train_image_' + str(resolution), train_image)
             
         self.transform  = transform
         self.resolution = resolution

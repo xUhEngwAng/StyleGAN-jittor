@@ -2,7 +2,6 @@ import jittor as jt
 import numpy as np
 import random
 from math import sqrt
-#jt.flags.use_cuda = True
 
 class EqualLR:
     def __init__(self, name):
@@ -179,13 +178,13 @@ class ConvBlock(jt.Module):
         if downsample:
             if fused:
                 self.conv2 = jt.nn.Sequential(
-                    #Blur(out_channel),
+                    Blur(out_channel),
                     FusedDownsample(out_channel, out_channel, kernel2, padding=pad2),
                     jt.nn.LeakyReLU(0.2),
                 )
             else:
                 self.conv2 = jt.nn.Sequential(
-                    #Blur(out_channel),
+                    Blur(out_channel),
                     EqualConv2d(out_channel, out_channel, kernel2, padding=pad2),
                     jt.nn.AvgPool2d(2),
                     jt.nn.LeakyReLU(0.2),
@@ -297,7 +296,7 @@ class AdaptiveInstanceNorm(jt.nn.Module):
         out = self.norm(input)
         out = gamma * out + beta
 
-        return out 
+        return out
     
 class StyledConvBlock(jt.Module):
     def __init__(
@@ -320,7 +319,7 @@ class StyledConvBlock(jt.Module):
                         FusedUpsample(
                             in_channel, out_channel, kernel_size, padding=padding
                         ),
-                        #Blur(out_channel),
+                        Blur(out_channel),
                     )
                 else:
                     self.conv1 = jt.nn.Sequential(
@@ -328,7 +327,7 @@ class StyledConvBlock(jt.Module):
                         EqualConv2d(
                             in_channel, out_channel, kernel_size, padding=padding
                         ),
-                        #Blur(out_channel),
+                        Blur(out_channel),
                     )
             else:
                 self.conv1 = EqualConv2d(
