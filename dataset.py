@@ -11,19 +11,19 @@ class SymbolDataset(Dataset):
 
         for image_file in os.listdir(resolution_path):
             image_path = os.path.join(resolution_path, image_file)
-            if os.path.splitext(image_path)[-1] != '.jpg':
+            if os.path.splitext(image_path)[-1] != '.png':
                 continue
-            image = plt.imread(image_path)
+            image = plt.imread(image_path) * 255
+            image = image.astype('uint8')
             train_image.append(image)
                 
-            setattr(self, 'train_image_' + str(resolution), train_image)
-            
+        self.train_image = train_image
         self.transform  = transform
         self.resolution = resolution
         
     def __len__(self):
-        return len(getattr(self, 'train_image_' + str(self.resolution)))
+        return len(self.train_image)
     
     def __getitem__(self, index):
-        X = getattr(self, 'train_image_' + str(self.resolution))[index]
+        X = self.train_image[index]
         return self.transform(X)

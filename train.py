@@ -37,21 +37,20 @@ if __name__ == '__main__':
     mixing = True
 
     code_size = 512
-    batch_size = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 32}
+    batch_size = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16}
     batch_default = 32
-    gen_sample = {512: (8, 4), 1024: (4, 2)}
 
-    phase = 100_000
-    max_iter = 40_000
+    phase = 150_000
+    max_iter = 100_000
 
     transform = transform.Compose([
-        #transform.Resize(size=img_size),
         transform.ToPILImage(),
         transform.RandomHorizontalFlip(),
         transform.ToTensor(),
         transform.ImageNormalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
     root_path = 'color_symbol_7k'
+    root_path = 'FFHQ'
     
     netG = StyledGenerator(code_dim=code_size)
     netD = Discriminator(from_rgb_activate=True)
@@ -130,7 +129,7 @@ if __name__ == '__main__':
                     'discriminator': netD.state_dict(),
                     'g_running': g_running.state_dict(),
                 },
-                f'checkpoint/train_step-{ckpt_step}.model',
+                f'FFHQ/checkpoint/train_step-{ckpt_step}.model',
             )
 
         try:
@@ -196,7 +195,7 @@ if __name__ == '__main__':
         if (i + 1) % 100 == 0:
             images = []
 
-            gen_i, gen_j = gen_sample.get(resolution, (10, 5))
+            gen_i, gen_j = (10, 5)
 
             with jt.no_grad():
                 for _ in range(gen_i):
@@ -208,14 +207,14 @@ if __name__ == '__main__':
 
             jt.save_image(
                 jt.concat(images, 0),
-                f'sample/{str(i + 1).zfill(6)}.png',
+                f'FFHQ/sample/{str(i + 1).zfill(6)}.png',
                 nrow=gen_i,
                 normalize=True,
                 range=(-1, 1),
             )
 
         if (i + 1) % 10000 == 0:
-            jt.save(g_running.state_dict(), f'checkpoint/{str(i + 1).zfill(6)}.model')
+            jt.save(g_running.state_dict(), f'FFHQ/checkpoint/{str(i + 1).zfill(6)}.model')
 
         state_msg = (
             f'Size: {4 * 2 ** step}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
