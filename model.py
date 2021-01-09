@@ -202,9 +202,9 @@ class Discriminator(jt.Module):
     def __init__(self, fused=True, from_rgb_activate=False):
         self.progression = jt.nn.ModuleList(
             [
-                #ConvBlock( 16,  32, 3, 1, downsample=True, fused=fused),  # 512
-                #ConvBlock( 32,  64, 3, 1, downsample=True, fused=fused),  # 256
-                #ConvBlock( 64, 128, 3, 1, downsample=True, fused=fused),  # 128
+                ConvBlock( 16,  32, 3, 1, downsample=True, fused=fused),  # 512
+                ConvBlock( 32,  64, 3, 1, downsample=True, fused=fused),  # 256
+                ConvBlock( 64, 128, 3, 1, downsample=True, fused=fused),  # 128
                 ConvBlock(128, 256, 3, 1, downsample=True, fused=fused),  # 64
                 ConvBlock(256, 512, 3, 1, downsample=True),  # 32
                 ConvBlock(512, 512, 3, 1, downsample=True),  # 16
@@ -223,9 +223,9 @@ class Discriminator(jt.Module):
 
         self.from_rgb = jt.nn.ModuleList(
             [
-                #make_from_rgb(16),
-                #make_from_rgb(32),
-                #make_from_rgb(64),
+                make_from_rgb(16),
+                make_from_rgb(32),
+                make_from_rgb(64),
                 make_from_rgb(128),
                 make_from_rgb(256),
                 make_from_rgb(512),
@@ -372,9 +372,9 @@ class Generator(jt.Module):
                 StyledConvBlock(512, 512, 3, 1, upsample=True),  # 32
                 StyledConvBlock(512, 256, 3, 1, upsample=True),  # 64
                 StyledConvBlock(256, 128, 3, 1, upsample=True, fused=fused),  # 128
-                #StyledConvBlock(128,  64, 3, 1, upsample=True, fused=fused),  # 256
-                #StyledConvBlock( 64,  32, 3, 1, upsample=True, fused=fused),  # 512
-                #StyledConvBlock( 32,  16, 3, 1, upsample=True, fused=fused),  # 1024
+                StyledConvBlock(128,  64, 3, 1, upsample=True, fused=fused),  # 256
+                StyledConvBlock( 64,  32, 3, 1, upsample=True, fused=fused),  # 512
+                StyledConvBlock( 32,  16, 3, 1, upsample=True, fused=fused),  # 1024
             ]
         )
 
@@ -386,9 +386,9 @@ class Generator(jt.Module):
                 EqualConv2d(512, 3, 1),
                 EqualConv2d(256, 3, 1),
                 EqualConv2d(128, 3, 1),
-                #EqualConv2d(64, 3, 1),
-                #EqualConv2d(32, 3, 1),
-                #EqualConv2d(16, 3, 1),
+                EqualConv2d(64, 3, 1),
+                EqualConv2d(32, 3, 1),
+                EqualConv2d(16, 3, 1),
             ]
         )
 

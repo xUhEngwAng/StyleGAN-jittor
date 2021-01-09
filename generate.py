@@ -90,10 +90,10 @@ if __name__ == '__main__':
     step = int(math.log(args.size, 2)) - 2
     
     img = sample(generator, step, mean_style, args.n_row * args.n_col)
-    jt.save_image(img, 'FFHQ/style_mixing/sample.png', nrow=args.n_col, normalize=True, range=(-1, 1))
+    jt.save_image(img, 'style_mixing/sample.png', nrow=args.n_col, normalize=True, range=(-1, 1))
     
     for j in range(20):
         img = style_mixing(generator, step, mean_style, args.n_col, args.n_row)
         jt.save_image(
-            img, f'FFHQ/style_mixing/sample_mixing_{j}.png', nrow=args.n_col + 1, normalize=True, range=(-1, 1)
+            img, f'style_mixing/sample_mixing_{j}.png', nrow=args.n_col + 1, normalize=True, range=(-1, 1)
         )

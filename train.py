@@ -24,6 +24,7 @@ def requires_grad(model, flag=True):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Progressive Growing of GANs')
+    parser.add_argument('path', type=str, help='path of specified dataset')
     parser.add_argument('--ckpt', default=None, type=str, help='load from previous checkpoints')
     parser.add_argument('--init_size', default=8, type=int, help='initial image size')
     args = parser.parse_args()
@@ -49,8 +50,6 @@ if __name__ == '__main__':
         transform.ToTensor(),
         transform.ImageNormalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
-    root_path = 'color_symbol_7k'
-    root_path = 'FFHQ'
     
     netG = StyledGenerator(code_dim=code_size)
     netD = Discriminator(from_rgb_activate=True)
@@ -80,7 +79,7 @@ if __name__ == '__main__':
     ## Actual Training
     step = init_step
     resolution = int(4 * 2 ** step)
-    image_loader = SymbolDataset(root_path, transform, resolution).set_attrs(
+    image_loader = SymbolDataset(args.path, transform, resolution).set_attrs(
         batch_size=batch_size.get(resolution, batch_default), 
         shuffle=True
     )
@@ -117,7 +116,7 @@ if __name__ == '__main__':
 
             resolution = 4 * 2 ** step
 
-            image_loader = SymbolDataset(root_path, transform, resolution).set_attrs(
+            image_loader = SymbolDataset(args.path, transform, resolution).set_attrs(
                 batch_size=batch_size.get(resolution, batch_default), 
                 shuffle=True
             )

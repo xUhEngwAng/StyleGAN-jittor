@@ -11,9 +11,16 @@ class SymbolDataset(Dataset):
 
         for image_file in os.listdir(resolution_path):
             image_path = os.path.join(resolution_path, image_file)
-            if os.path.splitext(image_path)[-1] != '.png':
+            ext = os.path.splitext(image_path)[-1]
+            
+            if ext not in ['.png', '.jpg']:
                 continue
-            image = plt.imread(image_path) * 255
+                
+            image = plt.imread(image_path)
+            
+            if ext == '.png':
+                image = image * 255
+                
             image = image.astype('uint8')
             train_image.append(image)
                 
