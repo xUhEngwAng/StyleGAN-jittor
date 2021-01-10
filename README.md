@@ -65,7 +65,7 @@ python generate.py checkpoint/FFHQ_80000.model
 
 <center>
 <table><tr>
-    <td><img src='exmaple/symbol.png' width='20%'></td>
+    <td><img src='example/symbol.png' width='20%'></td>
     <td><img src='example/face.png' width='20%'></td>
 </tr></table>
 </center>
@@ -74,7 +74,7 @@ python generate.py checkpoint/FFHQ_80000.model
 
 <center>
 <table><tr>
-    <td><img src='exmaple/symbol_mixing1.png' width='20%'></td>
+    <td><img src='example/symbol_mixing1.png' width='20%'></td>
     <td><img src='example/symbol_mixing2.png' width='20%'></td>
 </tr></table>
 </center>
@@ -83,7 +83,7 @@ python generate.py checkpoint/FFHQ_80000.model
 
 <center>
 <table><tr>
-    <td><img src='exmaple/face_mixing1.png' width='20%'></td>
+    <td><img src='example/face_mixing1.png' width='20%'></td>
     <td><img src='example/face_mixing2.png' width='20%'></td>
 </tr></table>
 </center>
@@ -139,7 +139,8 @@ StyleGAN 在生成器模型结构上的创新不可谓不多，其中最主要�
 + 使用 Mapping Network 将原始的隐空间向量映射到一个中间向量，从而降低各个特征之间的耦合；
 + 使用中间向量来控制生成图像的特征。引入 AdaIn 模块学习不同层次仿射变换（Affine Transformation）的参数，使得不同分辨率侧重于不同的特征，进一步降低特征间的耦合程度；
 + 显式地引入 noise 模块，并通过全连接层重新编码，控制不同分辨率层次的噪声信息，使得生成的图像更具有多样性；
-+ 移除了传统的 Batch Normalization 层次，而是使用了像素层级的 Pixel Normalization 层。
++ 移除了传统的 Batch Normalization 层次，而是使用了像素层级的 Pixel Normalization 层；
++ 使用了 style mixing 的方法对网络做正则化，防止网络认为相邻层次的特征总是相关的，因此可以更加细粒度地控制生成的图像。
 
 然而所有这些都不是我想要讨论的，因为原论文中已经进行了相当的阐述了。在这一节，我想要讨论的是原论文中没有提及，然而在实际代码实现中却用到的实现细节，主要包括 EqualLR 模块，使用 Minibatch Standard-deviation 增加生成图像的差异性，以及 Fused Upsample/Downsample 模块。（后来发现这些细节好像在 StyleGAN 的前作 ProGAN 论文中提到了😅
 
@@ -191,12 +192,103 @@ $$
 
 因此，被 EqualLR 包裹的模块，不仅仅参数初始化使用了恺明初始化的方法，在每次前向传播时也要按照恺明初始化的方法进行标准化。这样有助于各个模块的参数具有接近的更新速度，促进生成器与判别器的良性竞争，
 
-> Minibatch Standard-deviation 增加生成图像的差异性
+> Minibatch Standard-deviation 增加生成图像的多样性
 
+我看查看 pytorch 版本的 Discriminator 代码时，发现下面这个问题：
 
+```python
+class Discriminator(torch.nn.Module):
+    def __init__(self, fused=True, from_rgb_activate=False):
+        super().__init__()
+
+        self.progression = nn.ModuleList(
+            [
+                ConvBlock(16, 32, 3, 1, downsample=True, fused=fused),  # 512
+                ConvBlock(32, 64, 3, 1, downsample=True, fused=fused),  # 256
+                ConvBlock(64, 128, 3, 1, downsample=True, fused=fused),  # 128
+                ConvBlock(128, 256, 3, 1, downsample=True, fused=fused),  # 64
+                ConvBlock(256, 512, 3, 1, downsample=True),  # 32
+                ConvBlock(512, 512, 3, 1, downsample=True),  # 16
+                ConvBlock(512, 512, 3, 1, downsample=True),  # 8
+                ConvBlock(512, 512, 3, 1, downsample=True),  # 4
+                ConvBlock(513, 512, 3, 1, 4, 0),
+            ]
+        )
+```
+
+可以注意到，最后一个 `ConvBlock` 输入的通道数是 513 而非 512。期初我以为是这个开发者的失误，后来有了更深入的调研后才发现本应如此。这是由于在 Discriminator 的最后一个层次，还计算了特征图在当前 batch 上的标准差，并将得到的结果作为一个新的特征图加到了原始的输出上，因此该层次的输入本该拥有 513 个通道。
+
+```python
+class Discriminator(torch.nn.Module):
+    def __init__(self, fused=True, from_rgb_activate=False):
+           # initialization code
+            
+    def forward(self, input, step=0, alpha=-1):
+        for i in range(step, -1, -1):
+            index = self.n_layer - i - 1
+
+            if i == step:
+                out = self.from_rgb[index](input)
+
+            if i == 0:
+                out_std = torch.sqrt(out.var(0, unbiased=False) + 1e-8)
+                mean_std = out_std.mean()
+                mean_std = mean_std.expand(out.size(0), 1, 4, 4)
+                out = torch.cat([out, mean_std], 1)
+        
+        # more code goes here
+```
+
+通过这种方法，可以统计当前 batch 内的信息，使得 Discriminator 通过这些额外的统计信息区分真实样本与生成的样本。从而使得 Generator 生成更加多样化，更接近真实样本分布的图片。可以说是相当工程化的实现了。
 
 > Fused Upsample/Downsample 模块
 
-## 总结与展望
+在 Generator 还有 Discriminator 的实现中，都广泛地使用了耦合的上采样与下采样层：
+
+```python
+class FusedDownsample(jt.Module):
+    def __init__(self, in_channel, out_channel, kernel_size, padding=0):
+        self.weight = jt.randn(out_channel, in_channel, kernel_size, kernel_size)
+        self.bias = jt.zeros(out_channel)
+
+        fan_in = in_channel * kernel_size * kernel_size
+        self.multiplier = sqrt(2 / fan_in)
+        self.pad = padding
+
+    def execute(self, input):
+        weight = jt.nn.pad(self.weight * self.multiplier, [1, 1, 1, 1])
+        weight = (
+            weight[:, :, 1:, 1:]  +
+            weight[:, :, :-1, 1:] +
+            weight[:, :, 1:, :-1] +
+            weight[:, :, :-1, :-1]
+        ) / 4
+
+        out = jt.nn.conv2d(input, weight, self.bias, stride=2, padding=self.pad)
+        return out
+
+class FusedUpsample(jt.Module):
+    def __init__(self, in_channel, out_channel, kernel_size, padding=0):
+        self.weight = jt.randn(in_channel, out_channel, kernel_size, kernel_size)
+        self.bias = jt.zeros(out_channel)
+
+        fan_in = in_channel * kernel_size * kernel_size
+        self.multiplier = sqrt(2 / fan_in)
+        self.pad = padding
+
+    def execute(self, input):
+        weight = jt.nn.pad(self.weight * self.multiplier, [1, 1, 1, 1])
+        weight = (
+            weight[:, :, 1:, 1:] +
+            weight[:, :, :-1, 1:] +
+            weight[:, :, 1:, :-1] +
+            weight[:, :, :-1, :-1]
+        ) / 4
+
+        out = jt.nn.conv_transpose2d(input, weight, self.bias, stride=2, padding=self.pad)
+        return out
+```
+
+这两个模块前者乃是卷积与平均池化（Average Pooling）的耦合，而后者是转置卷积与平均池化的耦合，下面以 FusedDownsample 为例进行说明。可以看到，在 `__init__` 函数中，首先定义了一个卷积核（`self.weight`），并对其使用恺明初始化。在 `execute` 函数中，则对该卷积核的四周都加了大小为 1 的 padding，随后将左上、右上、左下、右下四个子卷积核做了算数平均，读者可以自行验证，该操作等价于对特征图先做卷积，再做平均池化。通过这种方法，可以减少数据流动的层次，在一定程度上加速运算，使得模型训练得更快。
 
 ## LICENSE
