@@ -27,9 +27,9 @@ git clone https://github.com/xUhEngwAng/StyleGAN-jittor.git
 
 本项目的文件结构如下：
 
-+ `model.py` 定义了 StyleGAN 中生成器（Generator）与判别器的（Discriminator）的结构，前者定义在了 `class StyledGenerator` 当中，后者定义在了 `class Discriminator` 当中。关于 StyleGAN 的模型结构，还会在 [StyleGAN 实现细节] 一节进行进一步的阐述；
-+ `train.py` 是对模型进行训练的脚本，`resize.py` 则是前期进行数据准备的脚本。关于两者的使用在 [从零开始训练] 一节进行说明；
-+ `generate.py` 是利用训练好的模型生成图像的脚本。其使用方法会在 [使用预训练模型生成图像] 一节进行说明；
++ `model.py` 定义了 StyleGAN 中生成器（Generator）与判别器的（Discriminator）的结构，前者定义在了 `class StyledGenerator` 当中，后者定义在了 `class Discriminator` 当中。关于 StyleGAN 的模型结构，还会在 [StyleGAN实现细节](#StyleGAN实现细节) 一节进行进一步的阐述；
++ `train.py` 是对模型进行训练的脚本，`resize.py` 则是前期进行数据准备的脚本。关于两者的使用在 [从零开始训练](#从零开始训练) 一节进行说明；
++ `generate.py` 是利用训练好的模型生成图像的脚本。其使用方法会在 [使用预训练模型生成图像](#使用预训练模型生成图像) 一节进行说明；
 + `checkpoint` 文件夹用于保存训练好的模型文件；
 + `sample` 文件夹保存了若干生成好的图像结果。
 + `test` 文件夹保存是我在实现过程中对相关代码进行测试的文件；
@@ -132,7 +132,7 @@ python train.py color_symbol_7k --init_size 8
 
 我使用单个 TITAN RTX (24G) GPU 大约训练了十四个小时，可以得到上面人脸图像合成的效果。您可以根据您机器的配置，调整模型当中用到的参数，如 batch_size，最大迭代次数等。
 
-## StyleGAN 实现细节
+## StyleGAN实现细节
 
 StyleGAN 在生成器模型结构上的创新不可谓不多，其中最主要的包括
 
